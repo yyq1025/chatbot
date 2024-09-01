@@ -1,11 +1,10 @@
 import { type Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 
-import { auth } from '@/auth'
 import { getChat, getMissingKeys } from '@/app/actions'
 import { Chat } from '@/components/chat'
 import { AI } from '@/lib/chat/actions'
-import { Session } from '@/lib/types'
+import { getSession } from '@auth0/nextjs-auth0'
 
 export interface ChatPageProps {
   params: {
@@ -16,13 +15,13 @@ export interface ChatPageProps {
 export async function generateMetadata({
   params
 }: ChatPageProps): Promise<Metadata> {
-  const session = await auth()
+  const session = await getSession()
 
   if (!session?.user) {
     return {}
   }
 
-  const chat = await getChat(params.id, session.user.id)
+  const chat = await getChat(params.id, session.user.sub)
 
   if (!chat || 'error' in chat) {
     redirect('/')
@@ -34,20 +33,20 @@ export async function generateMetadata({
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {
-  const session = (await auth()) as Session
+  const session = await getSession()
   const missingKeys = await getMissingKeys()
 
   if (!session?.user) {
-    redirect(`/login?next=/chat/${params.id}`)
+    redirect('/')
   }
 
-  const userId = session.user.id as string
+  const userId = session.user.sub as string
   const chat = await getChat(params.id, userId)
 
   if (!chat || 'error' in chat) {
     redirect('/')
   } else {
-    if (chat?.userId !== session?.user?.id) {
+    if (chat?.userId !== session?.user?.sub) {
       notFound()
     }
 
@@ -55,7 +54,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
       <AI initialAIState={{ chatId: chat.id, messages: chat.messages }}>
         <Chat
           id={chat.id}
-          session={session}
+          user={session.user}
           initialMessages={chat.messages}
           missingKeys={missingKeys}
         />

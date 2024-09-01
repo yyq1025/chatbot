@@ -2,28 +2,27 @@ import * as React from 'react'
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
-import { auth } from '@/auth'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
   IconGitHub,
   IconNextChat,
-  IconSeparator,
-  IconVercel
+  IconSeparator
 } from '@/components/ui/icons'
 import { UserMenu } from '@/components/user-menu'
 import { SidebarMobile } from './sidebar-mobile'
 import { SidebarToggle } from './sidebar-toggle'
 import { ChatHistory } from './chat-history'
-import { Session } from '@/lib/types'
+import { getSession } from '@auth0/nextjs-auth0'
 
 async function UserOrLogin() {
-  const session = (await auth()) as Session
+  const session = await getSession()
+
   return (
     <>
-      {session?.user ? (
+      {session ? (
         <>
           <SidebarMobile>
-            <ChatHistory userId={session.user.id} />
+            <ChatHistory userId={session.user.sub} />
           </SidebarMobile>
           <SidebarToggle />
         </>
@@ -35,11 +34,11 @@ async function UserOrLogin() {
       )}
       <div className="flex items-center">
         <IconSeparator className="size-6 text-muted-foreground/50" />
-        {session?.user ? (
+        {session ? (
           <UserMenu user={session.user} />
         ) : (
           <Button variant="link" asChild className="-ml-2">
-            <Link href="/login">Login</Link>
+            <Link href="/api/auth/login">Login</Link>
           </Button>
         )}
       </div>
@@ -64,15 +63,6 @@ export function Header() {
         >
           <IconGitHub />
           <span className="hidden ml-2 md:flex">GitHub</span>
-        </a>
-        <a
-          href="https://vercel.com/templates/Next.js/nextjs-ai-chatbot"
-          target="_blank"
-          className={cn(buttonVariants())}
-        >
-          <IconVercel className="mr-2" />
-          <span className="hidden sm:block">Deploy to Vercel</span>
-          <span className="sm:hidden">Deploy</span>
         </a>
       </div>
     </header>

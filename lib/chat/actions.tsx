@@ -15,7 +15,7 @@ import { nanoid } from '@/lib/utils'
 import { saveChat } from '@/app/actions'
 import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
-import { auth } from '@/auth'
+import { getSession } from '@auth0/nextjs-auth0'
 
 async function submitUserMessage(content: string) {
   'use server'
@@ -101,7 +101,7 @@ export const AI = createAI<AIState, UIState>({
   onGetUIState: async () => {
     'use server'
 
-    const session = await auth()
+    const session = await getSession()
 
     if (session && session.user) {
       const aiState = getAIState() as Chat
@@ -117,13 +117,13 @@ export const AI = createAI<AIState, UIState>({
   onSetAIState: async ({ state }) => {
     'use server'
 
-    const session = await auth()
+    const session = await getSession()
 
     if (session && session.user) {
       const { chatId, messages } = state
 
       const createdAt = new Date()
-      const userId = session.user.id as string
+      const userId = session.user.sub as string
       const path = `/chat/${chatId}`
 
       const firstMessageContent = messages[0].content as string
