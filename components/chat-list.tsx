@@ -1,6 +1,5 @@
 import { Separator } from '@/components/ui/separator'
 import { UIState } from '@/lib/chat/actions'
-import { Session } from '@/lib/types'
 import Link from 'next/link'
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons'
 import type { UserProfile } from '@auth0/nextjs-auth0/client'

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { kv } from '@vercel/kv'
 
-import { type Chat } from '@/lib/types'
+import prisma from '@/lib/prisma'
+import type { Chat } from '@/lib/types'
 import { getSession } from '@auth0/nextjs-auth0'
 
 export async function getChats(userId?: string | null) {
@@ -14,23 +14,24 @@ export async function getChats(userId?: string | null) {
     return []
   }
 
-  if (userId !== session?.user?.sub) {
+  if (!userId || userId !== session?.user?.sub) {
     return {
       error: 'Unauthorized'
     }
   }
 
   try {
-    const pipeline = kv.pipeline()
-    const chats: string[] = await kv.zrange(`user:chat:${userId}`, 0, -1, {
-      rev: true
+    const results = await prisma.chat.findMany({
+      where: {
+        userId
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      omit: {
+        oid: true
+      }
     })
-
-    for (const chat of chats) {
-      pipeline.hgetall(chat)
-    }
-
-    const results = await pipeline.exec()
 
     return results as Chat[]
   } catch (error) {
@@ -47,13 +48,20 @@ export async function getChat(id: string, userId: string) {
     }
   }
 
-  const chat = await kv.hgetall<Chat>(`chat:${id}`)
+  const chat = await prisma.chat.findUnique({
+    where: {
+      id
+    },
+    omit: {
+      oid: true
+    }
+  })
 
   if (!chat || (userId && chat.userId !== userId)) {
     return null
   }
 
-  return chat
+  return chat as Chat
 }
 
 export async function removeChat({ id, path }: { id: string; path: string }) {
@@ -66,16 +74,26 @@ export async function removeChat({ id, path }: { id: string; path: string }) {
   }
 
   // Convert uid to string for consistent comparison with session.user.id
-  const uid = String(await kv.hget(`chat:${id}`, 'userId'))
+  const chat = await prisma.chat.findUnique({
+    where: {
+      id
+    },
+    select: {
+      userId: true
+    }
+  })
 
-  if (uid !== session?.user?.sub) {
+  if (chat?.userId !== session?.user?.sub) {
     return {
       error: 'Unauthorized'
     }
   }
 
-  await kv.del(`chat:${id}`)
-  await kv.zrem(`user:chat:${session.user.sub}`, `chat:${id}`)
+  await prisma.chat.delete({
+    where: {
+      id
+    }
+  })
 
   revalidatePath('/')
   return revalidatePath(path)
@@ -90,31 +108,31 @@ export async function clearChats() {
     }
   }
 
-  const chats: string[] = await kv.zrange(`user:chat:${session.user.sub}`, 0, -1)
-  if (!chats.length) {
-    return redirect('/')
-  }
-  const pipeline = kv.pipeline()
-
-  for (const chat of chats) {
-    pipeline.del(chat)
-    pipeline.zrem(`user:chat:${session.user.sub}`, chat)
-  }
-
-  await pipeline.exec()
+  await prisma.chat.deleteMany({
+    where: {
+      userId: session.user.sub
+    }
+  })
 
   revalidatePath('/')
   return redirect('/')
 }
 
 export async function getSharedChat(id: string) {
-  const chat = await kv.hgetall<Chat>(`chat:${id}`)
+  const chat = await prisma.chat.findUnique({
+    where: {
+      id
+    },
+    omit: {
+      oid: true
+    }
+  })
 
   if (!chat || !chat.sharePath) {
     return null
   }
 
-  return chat
+  return chat as Chat
 }
 
 export async function shareChat(id: string) {
@@ -126,7 +144,14 @@ export async function shareChat(id: string) {
     }
   }
 
-  const chat = await kv.hgetall<Chat>(`chat:${id}`)
+  const chat = await prisma.chat.findUnique({
+    where: {
+      id
+    },
+    omit: {
+      oid: true
+    }
+  })
 
   if (!chat || chat.userId !== session.user.sub) {
     return {
@@ -134,27 +159,31 @@ export async function shareChat(id: string) {
     }
   }
 
-  const payload = {
-    ...chat,
-    sharePath: `/share/${chat.id}`
-  }
+  await prisma.chat.update({
+    where: {
+      id: chat.id
+    },
+    data: {
+      sharePath: `/share/${chat.id}`
+    }
+  })
 
-  await kv.hmset(`chat:${chat.id}`, payload)
-
-  return payload
+  return {...chat, sharePath: `/share/${chat.id}`} as Chat
 }
 
 export async function saveChat(chat: Chat) {
   const session = await getSession()
 
   if (session && session.user) {
-    const pipeline = kv.pipeline()
-    pipeline.hmset(`chat:${chat.id}`, chat)
-    pipeline.zadd(`user:chat:${chat.userId}`, {
-      score: Date.now(),
-      member: `chat:${chat.id}`
+    await prisma.chat.upsert({
+      where: {
+        id: chat.id
+      },
+      update: chat as any,
+      create: chat as any
     })
-    await pipeline.exec()
+    revalidatePath(chat.path)
+    revalidatePath('/')
   } else {
     return
   }

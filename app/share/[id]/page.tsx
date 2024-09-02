@@ -6,8 +6,6 @@ import { getSharedChat } from '@/app/actions'
 import { ChatList } from '@/components/chat-list'
 import { AI, UIState, getUIStateFromAIState } from '@/lib/chat/actions'
 
-export const runtime = 'edge'
-export const preferredRegion = 'home'
 
 interface SharePageProps {
   params: {

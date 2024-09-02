@@ -1,0 +1,20 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["omitApi"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model chat {
+  oid       String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @unique
+  title     String
+  createdAt DateTime @default(now())
+  userId    String
+  path      String
+  messages  Json[]
+  sharePath String?
+}

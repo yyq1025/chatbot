@@ -6,12 +6,11 @@ import { ChatPanel } from '@/components/chat-panel'
 import { EmptyScreen } from '@/components/empty-screen'
 import { useLocalStorage } from '@/lib/hooks/use-local-storage'
 import { useEffect, useState } from 'react'
-import { useUIState, useAIState } from 'ai/rsc'
-import { Message, Session } from '@/lib/types'
+import { useUIState } from 'ai/rsc'
+import { Message } from '@/lib/types'
 import { usePathname, useRouter } from 'next/navigation'
 import { useScrollAnchor } from '@/lib/hooks/use-scroll-anchor'
 import { toast } from 'sonner'
-import type { UserProfile } from '@auth0/nextjs-auth0/client'
 import type { Claims } from '@auth0/nextjs-auth0'
 
 export interface ChatProps extends React.ComponentProps<'div'> {
@@ -26,28 +25,20 @@ export function Chat({ id, className, user, missingKeys }: ChatProps) {
   const path = usePathname()
   const [input, setInput] = useState('')
   const [messages] = useUIState()
-  const [aiState] = useAIState()
 
   const [_, setNewChatId] = useLocalStorage('newChatId', id)
 
   useEffect(() => {
     if (user) {
-      if (!path.includes('chat') && messages.length === 1) {
+      if (!path.includes('chat') && messages.length === 2) {
         window.history.replaceState({}, '', `/chat/${id}`)
       }
     }
-  }, [id, path, user, messages])
-
-  useEffect(() => {
-    const messagesLength = aiState.messages?.length
-    if (messagesLength === 2) {
-      router.refresh()
-    }
-  }, [aiState.messages, router])
+  }, [id, path, user, messages, router.refresh])
 
   useEffect(() => {
     setNewChatId(id)
-  })
+  }, [id, setNewChatId])
 
   useEffect(() => {
     missingKeys.map(key => {

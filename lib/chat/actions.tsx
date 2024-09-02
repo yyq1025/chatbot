@@ -72,8 +72,7 @@ async function submitUserMessage(content: string) {
       }
 
       return textNode
-    },
-    tools: {}
+    }
   })
 
   return {
