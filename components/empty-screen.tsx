@@ -15,8 +15,8 @@ export function EmptyScreen() {
             Vercel AI SDK
           </ExternalLink>
           , and{' '}
-          <ExternalLink href="https://vercel.com/storage/kv">
-            Vercel KV
+          <ExternalLink href="https://www.mongodb.com">
+            MongoDB
           </ExternalLink>
           .
         </p>
